@@ -1,6 +1,8 @@
 package com.jonesandjay123.geminiapistarter
 
 import android.graphics.BitmapFactory
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -36,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.rememberAsyncImagePainter
 
 val images = arrayOf(
     // Image generated using Gemini from the prompt "cupcake image"
@@ -62,6 +65,18 @@ fun BakingScreen(
     var result by rememberSaveable { mutableStateOf(placeholderResult) }
     val uiState by bakingViewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // 用於顯示本地選中的圖片
+    var selectedImageUri by rememberSaveable { mutableStateOf<android.net.Uri?>(null) }
+
+    // 圖片選擇器
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        selectedImageUri = uri
+        // 根據是否選擇了圖片來更改 prompt
+        prompt = if (uri != null) "請辨識圖片中的內容，並用繁體中文回答。" else placeholderPrompt
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -109,10 +124,17 @@ fun BakingScreen(
 
             Button(
                 onClick = {
-                    val bitmap = BitmapFactory.decodeResource(
-                        context.resources,
-                        images[selectedImage.intValue]
-                    )
+                    val bitmap = if (selectedImageUri != null) {
+                        // 從上傳的圖片加載
+                        val inputStream = context.contentResolver.openInputStream(selectedImageUri!!)
+                        BitmapFactory.decodeStream(inputStream)
+                    } else {
+                        // 使用選定的內建圖片
+                        BitmapFactory.decodeResource(
+                            context.resources,
+                            images[selectedImage.intValue]
+                        )
+                    }
                     bakingViewModel.sendPrompt(bitmap, prompt)
                 },
                 enabled = prompt.isNotEmpty(),
@@ -120,6 +142,44 @@ fun BakingScreen(
                     .align(Alignment.CenterVertically)
             ) {
                 Text(text = stringResource(R.string.action_go))
+            }
+        }
+
+        Button(
+            onClick = { pickImageLauncher.launch("image/*") },
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .padding(16.dp)
+        ) {
+            Text(text = "Choose Image from Gallery")
+        }
+
+        // 顯示選中的圖片以及移除按鈕
+        selectedImageUri?.let { uri ->
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(uri),
+                    contentDescription = "Selected Image",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .requiredSize(200.dp)
+                        .padding(16.dp)
+                )
+
+                Button(
+                    onClick = {
+                        selectedImageUri = null
+                        prompt = placeholderPrompt // 移除圖片後重置 prompt
+                    },
+                    modifier = Modifier.padding(top = 8.dp)
+                ) {
+                    Text(text = "Remove Image")
+                }
             }
         }
 
