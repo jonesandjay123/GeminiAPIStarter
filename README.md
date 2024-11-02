@@ -21,11 +21,8 @@ This project is a starter application using the Gemini API (specifically, the Ge
 If you are using version control, clone this repository using:
 
 ```bash
-bash
-複製程式碼
 git clone <repository-url>
 cd GeminiAPIStarter
-
 ```
 
 ### 2. Configure API Key
@@ -34,10 +31,7 @@ cd GeminiAPIStarter
 - Add the following line with your API key:
 
     ```
-    properties
-    複製程式碼
     apiKey=YOUR_API_KEY
-    
     ```
 
   *Replace `YOUR_API_KEY` with your actual Gemini API key.*
